@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>時間オフセット計算</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@300;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #232736;
+    --border: #2e3347;
+    --text: #e4e6f0;
+    --text-dim: #8b8fa6;
+    --accent: #6ee7b7;
+    --accent-dim: rgba(110,231,183,0.12);
+    --minus: #f87171;
+    --minus-dim: rgba(248,113,113,0.12);
+    --plus: #60a5fa;
+    --plus-dim: rgba(96,165,250,0.12);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Noto Sans JP', sans-serif;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 520px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+
+  .header h1 {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+  }
+
+  .header h1 span {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* Input Section */
+  .input-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 20px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .input-row:last-child { margin-bottom: 0; }
+
+  label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .field { flex: 1; }
+
+  input[type="date"],
+  input[type="time"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input:focus {
+    border-color: var(--accent);
+  }
+
+  input::-webkit-calendar-picker-indicator {
+    filter: invert(0.7);
+    cursor: pointer;
+  }
+
+  .now-btn {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid rgba(110,231,183,0.25);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-family: var(--sans);
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    align-self: flex-end;
+  }
+
+  .now-btn:hover {
+    background: rgba(110,231,183,0.2);
+    transform: translateY(-1px);
+  }
+
+  /* Slider Section */
+  .slider-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 20px;
+  }
+
+  .offset-display {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .offset-value {
+    font-family: var(--mono);
+    font-size: 2.8rem;
+    font-weight: 700;
+    transition: color 0.2s;
+    line-height: 1;
+  }
+
+  .offset-value.negative { color: var(--minus); }
+  .offset-value.zero { color: var(--text-dim); }
+  .offset-value.positive { color: var(--plus); }
+
+  .offset-label {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  .slider-wrap {
+    position: relative;
+    padding: 0 4px;
+    margin-bottom: 16px;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--surface2);
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 3px solid var(--bg);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    transition: transform 0.15s;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 3px solid var(--bg);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    cursor: pointer;
+  }
+
+  .slider-ticks {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 2px;
+  }
+
+  .slider-ticks span {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    opacity: 0.6;
+  }
+
+  .quick-btns {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 16px;
+  }
+
+  .quick-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .quick-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  .quick-btn.neg:hover {
+    border-color: var(--minus);
+    color: var(--minus);
+    background: var(--minus-dim);
+  }
+
+  /* Result Section */
+  .result-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .result-section::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--minus), var(--accent), var(--plus));
+    opacity: 0.7;
+  }
+
+  .result-label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+
+  .result-datetime {
+    font-family: var(--mono);
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.4;
+    transition: all 0.3s;
+  }
+
+  .result-date {
+    font-size: 1.1rem;
+    color: var(--text-dim);
+    font-weight: 400;
+  }
+
+  .result-diff {
+    margin-top: 12px;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    font-family: var(--mono);
+  }
+
+  .copy-btn {
+    margin-top: 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 24px;
+    color: var(--text-dim);
+    font-family: var(--sans);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .copy-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .copy-btn.copied {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  /* Responsive */
+  @media (max-width: 480px) {
+    .offset-value { font-size: 2.2rem; }
+    .result-datetime { font-size: 1.3rem; }
+    .input-section, .slider-section, .result-section { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <h1><span>±</span> 時間オフセット計算ツール</h1>
+  </div>
+
+  <div class="input-section">
+    <div class="input-row">
+      <div class="field">
+        <label>日付</label>
+        <input type="date" id="dateInput">
+      </div>
+      <div class="field">
+        <label>時刻</label>
+        <input type="time" id="timeInput" step="1">
+      </div>
+      <button class="now-btn" onclick="setNow()">現在</button>
+    </div>
+  </div>
+
+  <div class="slider-section">
+    <div class="offset-display">
+      <div class="offset-value zero" id="offsetDisplay">±0</div>
+      <div class="offset-label">時間</div>
+    </div>
+    <div class="slider-wrap">
+      <input type="range" id="slider" min="-48" max="48" value="0" step="1">
+    </div>
+    <div class="slider-ticks">
+      <span>−48h</span>
+      <span>−24h</span>
+      <span>0</span>
+      <span>+24h</span>
+      <span>+48h</span>
+    </div>
+    <div class="quick-btns">
+      <button class="quick-btn neg" onclick="setOffset(-24)">−24h</button>
+      <button class="quick-btn neg" onclick="setOffset(-12)">−12h</button>
+      <button class="quick-btn neg" onclick="setOffset(-6)">−6h</button>
+      <button class="quick-btn neg" onclick="setOffset(-1)">−1h</button>
+      <button class="quick-btn" onclick="setOffset(0)">0</button>
+      <button class="quick-btn" onclick="setOffset(1)">+1h</button>
+      <button class="quick-btn" onclick="setOffset(6)">+6h</button>
+      <button class="quick-btn" onclick="setOffset(12)">+12h</button>
+      <button class="quick-btn" onclick="setOffset(24)">+24h</button>
+    </div>
+  </div>
+
+  <div class="result-section">
+    <div class="result-label">計算結果</div>
+    <div class="result-datetime" id="resultTime">--:--:--</div>
+    <div class="result-date" id="resultDate">----/--/--</div>
+    <div class="result-diff" id="resultDiff"></div>
+    <button class="copy-btn" id="copyBtn" onclick="copyResult()">コピー</button>
+  </div>
+</div>
+
+<script>
+  const dateInput = document.getElementById('dateInput');
+  const timeInput = document.getElementById('timeInput');
+  const slider = document.getElementById('slider');
+  const offsetDisplay = document.getElementById('offsetDisplay');
+  const resultTime = document.getElementById('resultTime');
+  const resultDate = document.getElementById('resultDate');
+  const resultDiff = document.getElementById('resultDiff');
+  const copyBtn = document.getElementById('copyBtn');
+
+  const weekdays = ['日','月','火','水','木','金','土'];
+
+  function setNow() {
+    const now = new Date();
+    dateInput.value = fmt(now.getFullYear(), 4) + '-' + fmt(now.getMonth()+1, 2) + '-' + fmt(now.getDate(), 2);
+    timeInput.value = fmt(now.getHours(), 2) + ':' + fmt(now.getMinutes(), 2) + ':' + fmt(now.getSeconds(), 2);
+    calculate();
+  }
+
+  function fmt(n, d) {
+    return String(n).padStart(d, '0');
+  }
+
+  function setOffset(val) {
+    slider.value = val;
+    calculate();
+  }
+
+  function calculate() {
+    const d = dateInput.value;
+    const t = timeInput.value;
+    if (!d || !t) return;
+
+    const offset = parseInt(slider.value);
+
+    // Update offset display
+    let sign = offset > 0 ? '+' : offset < 0 ? '−' : '±';
+    let absVal = Math.abs(offset);
+    offsetDisplay.textContent = sign + absVal;
+    offsetDisplay.className = 'offset-value ' + (offset < 0 ? 'negative' : offset > 0 ? 'positive' : 'zero');
+
+    // Calculate
+    const base = new Date(d + 'T' + t);
+    const result = new Date(base.getTime() + offset * 3600000);
+
+    const wd = weekdays[result.getDay()];
+    resultDate.textContent = result.getFullYear() + '/' + fmt(result.getMonth()+1, 2) + '/' + fmt(result.getDate(), 2) + ' (' + wd + ')';
+    resultTime.textContent = fmt(result.getHours(), 2) + ':' + fmt(result.getMinutes(), 2) + ':' + fmt(result.getSeconds(), 2);
+
+    // Day diff
+    const dayDiff = Math.round((new Date(result.toDateString()) - new Date(base.toDateString())) / 86400000);
+    let diffText = '';
+    if (dayDiff < 0) diffText = Math.abs(dayDiff) + '日前';
+    else if (dayDiff > 0) diffText = dayDiff + '日後';
+    else diffText = '同日';
+    resultDiff.textContent = diffText;
+  }
+
+  function copyResult() {
+    const d = resultDate.textContent;
+    const t = resultTime.textContent;
+    if (t === '--:--:--') return;
+    const text = d + ' ' + t;
+    navigator.clipboard.writeText(text).then(() => {
+      copyBtn.textContent = 'コピー完了';
+      copyBtn.classList.add('copied');
+      setTimeout(() => {
+        copyBtn.textContent = 'コピー';
+        copyBtn.classList.remove('copied');
+      }, 1500);
+    });
+  }
+
+  // Event listeners
+  slider.addEventListener('input', calculate);
+  dateInput.addEventListener('input', calculate);
+  timeInput.addEventListener('input', calculate);
+
+  // Init with current time
+  setNow();
+</script>
+
+</body>
+</html>
